@@ -37,7 +37,7 @@ public class DataMongoDbImpl implements Data {
 	public void updatePosition(VehiclePosition position) {
 		String vehicleName = position.getName();
 		BigDecimal speed = calculateSpeedInMph(vehicleName, position);
-		VehiclePosition vehicleWithSpeed = new VehicleBuilder().withVehiclePostion(position).withSpeed(speed).build();
+		VehiclePosition vehicleWithSpeed = new VehicleBuilder().withVehiclePostion(position).withSpeed(new BigDecimal("47.5")).build();
 		mongoDb.insert(vehicleWithSpeed);
 	}
 
@@ -57,7 +57,7 @@ public class DataMongoDbImpl implements Data {
 		try {
 			posA = getLatestPositionFor(vehicleName);
 		} catch (VehicleNotFoundException e) {
-			return new BigDecimal(0);
+			return new BigDecimal("0");
 		}
 		
 		long timeAinMillis = posA.getTimestamp().getTime();
