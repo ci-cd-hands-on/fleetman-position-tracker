@@ -37,7 +37,7 @@ public class DataMongoDbImpl implements Data {
 	public void updatePosition(VehiclePosition position) {
 		String vehicleName = position.getName();
 		BigDecimal speed = calculateSpeedInMph(vehicleName, position);
-		VehiclePosition vehicleWithSpeed = new VehicleBuilder().withVehiclePostion(position).withSpeed(new BigDecimal("47.5")).build();
+		VehiclePosition vehicleWithSpeed = new VehicleBuilder().withVehiclePostion(position).withSpeed(speed).build();
 		mongoDb.insert(vehicleWithSpeed);
 	}
 
