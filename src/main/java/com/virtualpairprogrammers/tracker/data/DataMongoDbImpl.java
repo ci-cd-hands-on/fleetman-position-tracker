@@ -1,12 +1,16 @@
 package com.virtualpairprogrammers.tracker.data;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.TreeSet;
 
+import org.gavaghan.geodesy.Ellipsoid;
+import org.gavaghan.geodesy.GeodeticCalculator;
+import org.gavaghan.geodesy.GlobalPosition;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.Example;
 import org.springframework.stereotype.Repository;
 
@@ -25,10 +29,16 @@ public class DataMongoDbImpl implements Data {
 
 	@Autowired
 	private PositionRepository mongoDb;
+
+	private GeodeticCalculator geoCalc = new GeodeticCalculator();
+	private static final BigDecimal MPS_TO_MPH_FACTOR = new BigDecimal("2.236936");
 	
 	@Override
 	public void updatePosition(VehiclePosition position) {
-		mongoDb.insert(position);
+		String vehicleName = position.getName();
+		BigDecimal speed = calculateSpeedInMph(vehicleName, position);
+		VehiclePosition vehicleWithSpeed = new VehicleBuilder().withVehiclePostion(position).withSpeed(speed).build();
+		mongoDb.insert(vehicleWithSpeed);
 	}
 
 	@Override
@@ -38,6 +48,34 @@ public class DataMongoDbImpl implements Data {
 		List<VehiclePosition> all = mongoDb.findAll(example);
 		if (all.size() == 0) throw new VehicleNotFoundException();
 		return all.get(all.size() - 1);
+	}
+
+	private BigDecimal calculateSpeedInMph(String vehicleName, VehiclePosition newPosition)
+	{	
+		VehiclePosition posB = newPosition;
+		VehiclePosition posA;
+		try {
+			posA = getLatestPositionFor(vehicleName);
+		} catch (VehicleNotFoundException e) {
+			return null;
+		}
+		
+		long timeAinMillis = posA.getTimestamp().getTime();
+		long timeBinMillis = posB.getTimestamp().getTime();
+		long timeInMillis = timeBinMillis - timeAinMillis;
+		if (timeInMillis == 0) return new BigDecimal("0");
+		
+		BigDecimal timeInSeconds = new BigDecimal(timeInMillis / 1000.0);
+				
+		GlobalPosition pointA = new GlobalPosition(posA.getLat().doubleValue(), posA.getLongitude().doubleValue(), 0.0);
+		GlobalPosition pointB = new GlobalPosition(posB.getLat().doubleValue(), posB.getLongitude().doubleValue(), 0.0);
+	
+		double distance = geoCalc.calculateGeodeticCurve(Ellipsoid.WGS84, pointA, pointB).getEllipsoidalDistance(); // Distance between Point A and Point B
+		BigDecimal distanceInMetres = new BigDecimal (""+ distance);
+		
+		BigDecimal speedInMps = distanceInMetres.divide(timeInSeconds, RoundingMode.HALF_UP);
+		BigDecimal milesPerHour = speedInMps.multiply(MPS_TO_MPH_FACTOR);
+		return milesPerHour;
 	}
 
 	@Override
