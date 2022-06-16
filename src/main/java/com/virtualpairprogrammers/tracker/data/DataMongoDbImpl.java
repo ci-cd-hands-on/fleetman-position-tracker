@@ -57,7 +57,7 @@ public class DataMongoDbImpl implements Data {
 		try {
 			posA = getLatestPositionFor(vehicleName);
 		} catch (VehicleNotFoundException e) {
-			return null;
+			return new BigDecimal(0);
 		}
 		
 		long timeAinMillis = posA.getTimestamp().getTime();
