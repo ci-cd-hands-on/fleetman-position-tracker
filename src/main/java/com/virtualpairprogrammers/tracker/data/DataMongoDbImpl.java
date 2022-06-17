@@ -1,12 +1,16 @@
 package com.virtualpairprogrammers.tracker.data;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.TreeSet;
 
+import org.gavaghan.geodesy.Ellipsoid;
+import org.gavaghan.geodesy.GeodeticCalculator;
+import org.gavaghan.geodesy.GlobalPosition;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.Example;
 import org.springframework.stereotype.Repository;
 
@@ -25,10 +29,16 @@ public class DataMongoDbImpl implements Data {
 
 	@Autowired
 	private PositionRepository mongoDb;
+
+	private GeodeticCalculator geoCalc = new GeodeticCalculator();
+	private static final BigDecimal MPS_TO_MPH_FACTOR = new BigDecimal("2.236936");
 	
 	@Override
 	public void updatePosition(VehiclePosition position) {
-		mongoDb.insert(position);
+		String vehicleName = position.getName();
+		BigDecimal speed = calculateSpeedInMph(vehicleName, position);
+		VehiclePosition vehicleWithSpeed = new VehicleBuilder().withVehiclePostion(position).withSpeed(speed).build();
+		mongoDb.insert(vehicleWithSpeed);
 	}
 
 	@Override
@@ -47,7 +57,7 @@ public class DataMongoDbImpl implements Data {
 		try {
 			posA = getLatestPositionFor(vehicleName);
 		} catch (VehicleNotFoundException e) {
-			return new BigDecimal(0);
+			return new BigDecimal("0");
 		}
 		
 		long timeAinMillis = posA.getTimestamp().getTime();
