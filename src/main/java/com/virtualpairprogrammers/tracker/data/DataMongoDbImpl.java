@@ -40,6 +40,34 @@ public class DataMongoDbImpl implements Data {
 		return all.get(all.size() - 1);
 	}
 
+	private BigDecimal calculateSpeedInMph(String vehicleName, VehiclePosition newPosition)
+	{	
+		VehiclePosition posB = newPosition;
+		VehiclePosition posA;
+		try {
+			posA = getLatestPositionFor(vehicleName);
+		} catch (VehicleNotFoundException e) {
+			return new BigDecimal(0);
+		}
+		
+		long timeAinMillis = posA.getTimestamp().getTime();
+		long timeBinMillis = posB.getTimestamp().getTime();
+		long timeInMillis = timeBinMillis - timeAinMillis;
+		if (timeInMillis == 0) return new BigDecimal("0");
+		
+		BigDecimal timeInSeconds = new BigDecimal(timeInMillis / 1000.0);
+				
+		GlobalPosition pointA = new GlobalPosition(posA.getLat().doubleValue(), posA.getLongitude().doubleValue(), 0.0);
+		GlobalPosition pointB = new GlobalPosition(posB.getLat().doubleValue(), posB.getLongitude().doubleValue(), 0.0);
+	
+		double distance = geoCalc.calculateGeodeticCurve(Ellipsoid.WGS84, pointA, pointB).getEllipsoidalDistance(); // Distance between Point A and Point B
+		BigDecimal distanceInMetres = new BigDecimal (""+ distance);
+		
+		BigDecimal speedInMps = distanceInMetres.divide(timeInSeconds, RoundingMode.HALF_UP);
+		BigDecimal milesPerHour = speedInMps.multiply(MPS_TO_MPH_FACTOR);
+		return milesPerHour;
+	}
+
 	@Override
 	public void addAllReports(VehiclePosition[] allReports) {
 		for (VehiclePosition next: allReports)
